@@ -1,7 +1,8 @@
 package com.linuxpkgmgr.service;
 
-import com.linuxpkgmgr.model.InstalledPackage;
-import com.linuxpkgmgr.model.InstalledPackage.Source;
+import com.linuxpkgmgr.model.PackageInfo;
+import com.linuxpkgmgr.model.PackageInfo.Installed;
+import com.linuxpkgmgr.model.PackageInfo.Source;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,7 +38,7 @@ public class SystemPackageService {
     private PackageManager nativePackageManager;
     private boolean flatpakAvailable;
 
-    private volatile List<InstalledPackage> cachedPackages = null;
+    private volatile List<PackageInfo> cachedPackages = null;
     private volatile Instant cacheExpiry = Instant.MIN;
 
     public SystemPackageService(CommandExecutor executor) {
@@ -68,13 +69,13 @@ public class SystemPackageService {
      * Results are cached for {@value} seconds to avoid repeated subprocess spawns.
      * Call {@link #invalidateCache()} after any install/update/remove operation.
      */
-    public synchronized List<InstalledPackage> listInstalled() {
+    public synchronized List<PackageInfo> listInstalled() {
         if (cachedPackages != null && Instant.now().isBefore(cacheExpiry)) {
             log.debug("Returning {} cached packages", cachedPackages.size());
             return cachedPackages;
         }
 
-        List<InstalledPackage> packages = new ArrayList<>();
+        List<PackageInfo> packages = new ArrayList<>();
 
         try {
             packages.addAll(fetchNativePackages());
@@ -107,7 +108,7 @@ public class SystemPackageService {
     // Native package fetching — user-installed only
     // -------------------------------------------------------------------------
 
-    private List<InstalledPackage> fetchNativePackages() throws IOException, InterruptedException {
+    private List<PackageInfo> fetchNativePackages() throws IOException, InterruptedException {
         return switch (nativePackageManager) {
             case DNF    -> fetchDnf();
             case APT    -> fetchApt();
@@ -120,7 +121,7 @@ public class SystemPackageService {
         };
     }
 
-    private List<InstalledPackage> fetchDnf() throws IOException, InterruptedException {
+    private List<PackageInfo> fetchDnf() throws IOException, InterruptedException {
         // --userinstalled excludes packages pulled in purely as dependencies
         String output = executor.execute(List.of(
                 "dnf", "repoquery", "--userinstalled",
@@ -133,12 +134,12 @@ public class SystemPackageService {
                     String name = f[0].trim();
                     String ver  = f.length > 1 ? f[1].trim() : "";
                     String summ = f.length > 2 ? f[2].trim() : "";
-                    return new InstalledPackage(name, name, ver, summ, Source.NATIVE);
+                    return new PackageInfo(name, name, ver, summ, Source.NATIVE, Installed.YES);
                 })
                 .toList();
     }
 
-    private List<InstalledPackage> fetchApt() throws IOException, InterruptedException {
+    private List<PackageInfo> fetchApt() throws IOException, InterruptedException {
         // apt-mark showmanual lists only manually installed packages
         String manualOutput = executor.execute(List.of("apt-mark", "showmanual"));
         Set<String> manualPackages = Arrays.stream(manualOutput.split("\n"))
@@ -156,13 +157,13 @@ public class SystemPackageService {
                     String name = f[0].trim();
                     String ver  = f.length > 1 ? f[1].trim() : "";
                     String summ = f.length > 2 ? f[2].trim() : "";
-                    return new InstalledPackage(name, name, ver, summ, Source.NATIVE);
+                    return new PackageInfo(name, name, ver, summ, Source.NATIVE, Installed.YES);
                 })
                 .filter(p -> manualPackages.contains(p.id()))
                 .toList();
     }
 
-    private List<InstalledPackage> fetchPacman() throws IOException, InterruptedException {
+    private List<PackageInfo> fetchPacman() throws IOException, InterruptedException {
         // -Qe: explicitly installed, excludes pulled-in dependencies
         String output = executor.execute(List.of("pacman", "-Qe"));
         return Arrays.stream(output.split("\n"))
@@ -171,12 +172,12 @@ public class SystemPackageService {
                     String[] f = l.trim().split("\\s+", 2);
                     String name = f[0];
                     String ver  = f.length > 1 ? f[1] : "";
-                    return new InstalledPackage(name, name, ver, "", Source.NATIVE);
+                    return new PackageInfo(name, name, ver, "", Source.NATIVE, Installed.YES);
                 })
                 .toList();
     }
 
-    private List<InstalledPackage> fetchZypper() throws IOException, InterruptedException {
+    private List<PackageInfo> fetchZypper() throws IOException, InterruptedException {
         // --userinstalled shows only packages the user explicitly installed
         String output = executor.execute(List.of(
                 "zypper", "--no-refresh", "packages", "--userinstalled"
@@ -189,7 +190,7 @@ public class SystemPackageService {
                     if (f.length < 4) return null;
                     String name = f[2].trim();
                     String ver  = f[3].trim();
-                    return new InstalledPackage(name, name, ver, "", Source.NATIVE);
+                    return new PackageInfo(name, name, ver, "", Source.NATIVE, Installed.YES);
                 })
                 .filter(p -> p != null)
                 .toList();
@@ -199,7 +200,7 @@ public class SystemPackageService {
     // Flatpak fetching
     // -------------------------------------------------------------------------
 
-    private List<InstalledPackage> fetchFlatpakPackages() throws IOException, InterruptedException {
+    private List<PackageInfo> fetchFlatpakPackages() throws IOException, InterruptedException {
         // --app excludes runtimes; columns: human name, app-id, version
         String output = executor.execute(List.of(
                 "flatpak", "list", "--app", "--columns=name,application,version"
@@ -211,7 +212,7 @@ public class SystemPackageService {
                     String name  = f[0].trim();
                     String appId = f.length > 1 ? f[1].trim() : name;
                     String ver   = f.length > 2 ? f[2].trim() : "";
-                    return new InstalledPackage(name, appId, ver, "", Source.FLATPAK);
+                    return new PackageInfo(name, appId, ver, "", Source.FLATPAK, Installed.YES);
                 })
                 .toList();
     }

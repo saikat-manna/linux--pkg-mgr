@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -90,7 +91,111 @@ public class PackageSearchTools {
             query: keyword or package name.
             """)
     public String searchNativeRepo(String query) {
-        // TODO: implement
-        throw new UnsupportedOperationException("Not yet implemented");
+        log.debug("searchNativeRepo called — query: '{}', pm: {}", query, packageService.getNativePackageManager());
+
+        try {
+            return switch (packageService.getNativePackageManager()) {
+                case DNF    -> searchDnf(query);
+                case APT    -> searchApt(query);
+                case PACMAN -> searchPacman(query);
+                case ZYPPER -> searchZypper(query);
+                default     -> "No supported native package manager detected on this system.";
+            };
+        } catch (Exception e) {
+            return "Error searching native repo: " + e.getMessage();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+
+    /**
+     * Searches DNF (Fedora/RHEL) repositories.
+     * Command: dnf search <query>
+     * Output line format: "vlc.x86_64 : VLC media player"
+     * Filters out section headers (starting with '=') and metadata lines.
+     */
+    private String searchDnf(String query) throws Exception {
+        String output = executor.execute(List.of("dnf", "search", query));
+        List<String> lines = Arrays.stream(output.split("\n"))
+                .filter(l -> l.contains(" : ") && !l.startsWith("=") && !l.startsWith("Last") && !l.startsWith("Error"))
+                .limit(MAX_RESULTS)
+                .toList();
+        log.debug("searchDnf — lines: {}", lines.size());
+        if (lines.isEmpty()) return "No native packages found matching \"" + query + "\".";
+        return formatNativeOutput(query, lines);
+    }
+
+    /**
+     * Searches APT (Debian/Ubuntu) repositories.
+     * Command: apt-cache search <query>
+     * Output line format: "vlc - multimedia player and streamer"
+     * Output is already clean one-line-per-package, no headers to strip.
+     */
+    private String searchApt(String query) throws Exception {
+        String output = executor.execute(List.of("apt-cache", "search", query));
+        List<String> lines = Arrays.stream(output.split("\n"))
+                .filter(l -> !l.isBlank())
+                .limit(MAX_RESULTS)
+                .toList();
+        log.debug("searchApt — lines: {}", lines.size());
+        if (lines.isEmpty()) return "No native packages found matching \"" + query + "\".";
+        return formatNativeOutput(query, lines);
+    }
+
+    /**
+     * Searches Pacman (Arch Linux) repositories.
+     * Command: pacman -Ss <query>
+     * Output format is two lines per package:
+     *   "extra/vlc 3.0.20-1 [installed]"
+     *   "    VLC media player"
+     * Both lines are merged into a single entry: "extra/vlc 3.0.20-1 — VLC media player"
+     */
+    private String searchPacman(String query) throws Exception {
+        String[] rawLines = executor.execute(List.of("pacman", "-Ss", query)).split("\n");
+        List<String> lines = new ArrayList<>();
+        for (int i = 0; i < rawLines.length && lines.size() < MAX_RESULTS; i++) {
+            String l = rawLines[i];
+            if (!l.startsWith(" ") && l.contains("/")) {
+                String desc = (i + 1 < rawLines.length) ? rawLines[i + 1].trim() : "";
+                lines.add(l.trim() + (desc.isBlank() ? "" : " — " + desc));
+                i++; // skip the description line we already consumed
+            }
+        }
+        log.debug("searchPacman — lines: {}", lines.size());
+        if (lines.isEmpty()) return "No native packages found matching \"" + query + "\".";
+        return formatNativeOutput(query, lines);
+    }
+
+    /**
+     * Searches Zypper (openSUSE/SUSE) repositories.
+     * Command: zypper --no-refresh search <query>
+     * Output row format: "i | vlc | VLC media player | package"
+     *   Column 0: status ("i" = installed, blank = available)
+     *   Column 1: package name
+     *   Column 2: summary
+     * Header and separator rows (containing "Name" or "---") are skipped.
+     */
+    private String searchZypper(String query) throws Exception {
+        String output = executor.execute(List.of("zypper", "--no-refresh", "search", query));
+        List<String> lines = Arrays.stream(output.split("\n"))
+                .filter(l -> l.contains("|") && !l.contains("Name") && !l.contains("---"))
+                .map(l -> {
+                    String[] f = l.split("\\|");
+                    if (f.length < 3) return l.trim();
+                    String installed = f[0].trim().equals("i") ? "[installed] " : "";
+                    String name      = f[1].trim();
+                    String summary   = f[2].trim();
+                    return installed + name + " — " + summary;
+                })
+                .limit(MAX_RESULTS)
+                .toList();
+        log.debug("searchZypper — lines: {}", lines.size());
+        if (lines.isEmpty()) return "No native packages found matching \"" + query + "\".";
+        return formatNativeOutput(query, lines);
+    }
+
+    private String formatNativeOutput(String query, List<String> lines) {
+        return "[native] results for \"" + query + "\" (" + lines.size() + " shown):\n\n"
+                + String.join("\n", lines);
     }
 }
