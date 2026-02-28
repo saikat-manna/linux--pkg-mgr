@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: linux-pkg-mgr
+
+  ai:
+    ollama:
+      base-url: http://localhost:11435
+      chat:
+        model: qwen2.5:3b     # any tool-calling capable model: qwen2.5, llama3.2, mistral-nemo
+        options:
+          temperature: 0.2    # low temperature — deterministic tool-calling behaviour
+          num-ctx: 8192        # context window (increase for long package lists)
+
+    # MCP client — disabled until MCP servers are configured
+    mcp:
+      client:
+        enabled: false
+        # Example: enable the Flathub or system MCP server when ready
+        # servers:
+        #   flathub:
+        #     command: npx
+        #     args: [ "-y", "@flathub/mcp-server" ]
+
+pkg-mgr:
+  list:
+    max-results: 50   # cap on packages returned to the LLM in a single response
+
+logging:
+  level:
+    com.linuxpkgmgr: DEBUG
+    org.springframework.ai: INFO
