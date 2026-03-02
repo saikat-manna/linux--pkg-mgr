@@ -22,43 +22,29 @@ public class RoutingChatClient {
     private final ChatClient localClient;
     private final ChatClient cloudClient;
     private final ModelSelector selector;
+    private final ToolSelector toolSelector;
 
     public RoutingChatClient(@Qualifier("localChatClient") ChatClient localClient,
                              @Qualifier("cloudChatClient") ChatClient cloudClient,
-                             ModelSelector selector) {
+                             ModelSelector selector,
+                             ToolSelector toolSelector) {
         this.localClient = localClient;
         this.cloudClient = cloudClient;
         this.selector = selector;
+        this.toolSelector = toolSelector;
     }
 
     public String chat(String userQuery, String conversationId) {
         ModelSelector.Model model = selector.select(userQuery);
+        Object[] tools = toolSelector.select(userQuery);
         log.debug("ModelSelector → [{}] for query: {}", model, userQuery);
 
-        if (model == ModelSelector.Model.LOCAL) {
-            // Cloud advisor disabled — uncomment to re-enable planning hint injection
-//            String hint = cloudAdvisorClient.prompt()
-//                    .user(userQuery)
-//                    .call()
-//                    .content();
-//            log.debug("Cloud advisor hint: {}", hint);
-//
-//            String augmentedQuery = """
-//                    %s
-//                    <advisor_guidance>%s</advisor_guidance>
-//                    """.formatted(userQuery, hint);
-
-            return localClient.prompt()
-                    .user(userQuery)
-                    .advisors(a -> a.param("chat_memory_conversation_id", conversationId))
-                    .call()
-                    .content();
-        } else {
-            return cloudClient.prompt()
-                    .user(userQuery)
-                    .advisors(a -> a.param("chat_memory_conversation_id", conversationId))
-                    .call()
-                    .content();
-        }
+        ChatClient client = (model == ModelSelector.Model.LOCAL) ? localClient : cloudClient;
+        return client.prompt()
+                .user(userQuery)
+                .tools(tools)
+                .advisors(a -> a.param("chat_memory_conversation_id", conversationId))
+                .call()
+                .content();
     }
 }

@@ -3,7 +3,9 @@ package com.linuxpkgmgr.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.List;
 
 /**
@@ -16,6 +18,12 @@ import java.util.List;
 @Slf4j
 @Service
 public class CommandExecutor {
+
+    private final ShellOutputBus shellOutputBus;
+
+    public CommandExecutor(ShellOutputBus shellOutputBus) {
+        this.shellOutputBus = shellOutputBus;
+    }
 
     private record Result(String output, int exitCode) {}
 
@@ -41,12 +49,25 @@ public class CommandExecutor {
 
     private Result run(List<String> command) throws IOException, InterruptedException {
         log.debug("Executing: {}", command);
+        shellOutputBus.emit("$ " + String.join(" ", command));
+
         Process process = new ProcessBuilder(command)
                 .redirectErrorStream(true)
                 .start();
-        String output = new String(process.getInputStream().readAllBytes());
+
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                shellOutputBus.emit(line);
+                sb.append(line).append('\n');
+            }
+        }
+
         int exitCode = process.waitFor();
-        log.debug("Exit code: {}, output length: {} chars", exitCode, output.length());
-        return new Result(output, exitCode);
+        shellOutputBus.emit("→ exit " + exitCode);
+        log.debug("Exit code: {}, output length: {} chars", exitCode, sb.length());
+        return new Result(sb.toString(), exitCode);
     }
 }

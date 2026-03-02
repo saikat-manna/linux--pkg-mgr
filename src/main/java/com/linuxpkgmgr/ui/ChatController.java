@@ -1,6 +1,7 @@
 package com.linuxpkgmgr.ui;
 
 import com.linuxpkgmgr.cli.RoutingChatClient;
+import com.linuxpkgmgr.service.ShellOutputBus;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -9,6 +10,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
@@ -21,11 +23,14 @@ import java.net.URL;
 public class ChatController {
 
     private final RoutingChatClient routingClient;
+    private final ShellOutputBus shellOutputBus;
     private final String sessionId;
 
     public ChatController(RoutingChatClient routingClient,
+                          ShellOutputBus shellOutputBus,
                           @Value("${app.session-id}") String sessionId) {
         this.routingClient = routingClient;
+        this.shellOutputBus = shellOutputBus;
         this.sessionId = sessionId;
     }
 
@@ -67,11 +72,39 @@ public class ChatController {
         inputBar.getStyleClass().add("input-bar");
         inputBar.setAlignment(Pos.CENTER);
 
+        // ── Shell output pane ─────────────────────────────────────────────────
+        TextArea shellOutput = new TextArea();
+        shellOutput.getStyleClass().add("shell-output");
+        shellOutput.setEditable(false);
+        shellOutput.setWrapText(false);
+        shellOutput.setPrefHeight(150);
+        shellOutput.setVisible(false);
+        shellOutput.setManaged(false);
+
+        Label toggleLabel = new Label("▶  Shell Output");
+        toggleLabel.getStyleClass().add("shell-toggle");
+
+        HBox shellHeader = new HBox(toggleLabel);
+        shellHeader.getStyleClass().add("shell-header");
+        shellHeader.setAlignment(Pos.CENTER_LEFT);
+        shellHeader.setOnMouseClicked(e -> {
+            boolean expanded = shellOutput.isVisible();
+            shellOutput.setVisible(!expanded);
+            shellOutput.setManaged(!expanded);
+            toggleLabel.setText(expanded ? "▶  Shell Output" : "▼  Shell Output");
+        });
+
+        VBox bottomPane = new VBox(inputBar, shellHeader, shellOutput);
+
+        // ── Shell bus → TextArea ──────────────────────────────────────────────
+        shellOutputBus.addListener(line ->
+                Platform.runLater(() -> shellOutput.appendText(line + "\n")));
+
         // ── Layout ────────────────────────────────────────────────────────────
         BorderPane root = new BorderPane();
         root.setTop(header);
         root.setCenter(scrollPane);
-        root.setBottom(inputBar);
+        root.setBottom(bottomPane);
 
         // ── Send action ───────────────────────────────────────────────────────
         Runnable sendAction = () -> {

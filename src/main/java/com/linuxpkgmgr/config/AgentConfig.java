@@ -1,12 +1,6 @@
 package com.linuxpkgmgr.config;
 
 import com.linuxpkgmgr.service.SystemInfoService;
-import com.linuxpkgmgr.tool.AppQueryTools;
-import com.linuxpkgmgr.tool.PackageInstallTools;
-import com.linuxpkgmgr.tool.PackageQueryTools;
-import com.linuxpkgmgr.tool.PackageSearchTools;
-import com.linuxpkgmgr.tool.PackageUpdateTools;
-import com.linuxpkgmgr.tool.ProcessTools;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -112,16 +106,9 @@ public class AgentConfig {
     public ChatClient localChatClient(
             @Qualifier("localChatModel") OllamaChatModel localChatModel,
             ChatMemory chatMemory,
-            SystemInfoService systemInfoService,
-            AppQueryTools appQueryTools,
-            PackageQueryTools queryTools,
-            PackageSearchTools searchTools,
-            PackageInstallTools installTools,
-            PackageUpdateTools updateTools,
-            ProcessTools processTools) {
+            SystemInfoService systemInfoService) {
 
-        return buildChatClient(localChatModel, chatMemory, systemInfoService,
-                appQueryTools, queryTools, searchTools, installTools, updateTools, processTools);
+        return buildChatClient(localChatModel, chatMemory, systemInfoService);
     }
 
     /**
@@ -153,27 +140,14 @@ public class AgentConfig {
     public ChatClient cloudChatClient(
             @Qualifier("cloudChatModel") OllamaChatModel cloudChatModel,
             ChatMemory chatMemory,
-            SystemInfoService systemInfoService,
-            AppQueryTools appQueryTools,
-            PackageQueryTools queryTools,
-            PackageSearchTools searchTools,
-            PackageInstallTools installTools,
-            PackageUpdateTools updateTools,
-            ProcessTools processTools) {
+            SystemInfoService systemInfoService) {
 
-        return buildChatClient(cloudChatModel, chatMemory, systemInfoService,
-                appQueryTools, queryTools, searchTools, installTools, updateTools, processTools);
+        return buildChatClient(cloudChatModel, chatMemory, systemInfoService);
     }
 
     private ChatClient buildChatClient(OllamaChatModel model,
                                        ChatMemory chatMemory,
-                                       SystemInfoService systemInfoService,
-                                       AppQueryTools appQueryTools,
-                                       PackageQueryTools queryTools,
-                                       PackageSearchTools searchTools,
-                                       PackageInstallTools installTools,
-                                       PackageUpdateTools updateTools,
-                                       ProcessTools processTools) {
+                                       SystemInfoService systemInfoService) {
 
         String systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace(
                 "${system_details}", systemInfoService.getSystemDetails());
@@ -181,7 +155,6 @@ public class AgentConfig {
         return ChatClient.builder(model)
                 .defaultSystem(systemPrompt)
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
-                .defaultTools(appQueryTools, queryTools, searchTools, installTools, updateTools, processTools)
                 .build();
     }
 }
