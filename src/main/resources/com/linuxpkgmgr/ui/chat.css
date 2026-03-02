@@ -1,0 +1,17 @@
+.root            { -fx-background-color: #1e1e2e; }
+.header          { -fx-background-color: #181825; -fx-padding: 12 16; }
+.title-label     { -fx-text-fill: #cdd6f4; -fx-font-size: 15px; -fx-font-weight: bold; }
+.model-label     { -fx-text-fill: #6c7086; -fx-font-size: 12px; }
+.chat-scroll     { -fx-background-color: transparent; -fx-padding: 8; }
+.chat-box        { -fx-spacing: 10; -fx-padding: 8; }
+.bubble-ai       { -fx-background-color: #313244; -fx-text-fill: #cdd6f4;
+                   -fx-padding: 10 14; -fx-background-radius: 12; -fx-font-size: 14px; }
+.bubble-user     { -fx-background-color: #45475a; -fx-text-fill: #cdd6f4;
+                   -fx-padding: 10 14; -fx-background-radius: 12; -fx-font-size: 14px; }
+.input-bar       { -fx-background-color: #181825; -fx-padding: 10 12; -fx-spacing: 8; }
+.input-field     { -fx-background-color: #313244; -fx-text-fill: #cdd6f4;
+                   -fx-prompt-text-fill: #6c7086; -fx-font-size: 14px;
+                   -fx-background-radius: 8; -fx-padding: 8 12; }
+.send-button     { -fx-background-color: #89b4fa; -fx-text-fill: #1e1e2e;
+                   -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 8 16; }
+.send-button:hover { -fx-background-color: #b4befe; }

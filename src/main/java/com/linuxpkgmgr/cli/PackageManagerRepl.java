@@ -3,6 +3,7 @@ package com.linuxpkgmgr.cli;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.Scanner;
@@ -13,6 +14,7 @@ import java.util.Scanner;
  * Each JVM run gets a unique sessionId so the MessageChatMemoryAdvisor
  * scopes conversation history to this session only.
  */
+@Profile("!gui")
 @Component
 public class PackageManagerRepl implements ApplicationRunner {
 

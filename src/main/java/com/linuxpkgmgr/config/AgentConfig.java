@@ -6,6 +6,7 @@ import com.linuxpkgmgr.tool.PackageInstallTools;
 import com.linuxpkgmgr.tool.PackageQueryTools;
 import com.linuxpkgmgr.tool.PackageSearchTools;
 import com.linuxpkgmgr.tool.PackageUpdateTools;
+import com.linuxpkgmgr.tool.ProcessTools;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -116,10 +117,11 @@ public class AgentConfig {
             PackageQueryTools queryTools,
             PackageSearchTools searchTools,
             PackageInstallTools installTools,
-            PackageUpdateTools updateTools) {
+            PackageUpdateTools updateTools,
+            ProcessTools processTools) {
 
         return buildChatClient(localChatModel, chatMemory, systemInfoService,
-                appQueryTools, queryTools, searchTools, installTools, updateTools);
+                appQueryTools, queryTools, searchTools, installTools, updateTools, processTools);
     }
 
     /**
@@ -156,10 +158,11 @@ public class AgentConfig {
             PackageQueryTools queryTools,
             PackageSearchTools searchTools,
             PackageInstallTools installTools,
-            PackageUpdateTools updateTools) {
+            PackageUpdateTools updateTools,
+            ProcessTools processTools) {
 
         return buildChatClient(cloudChatModel, chatMemory, systemInfoService,
-                appQueryTools, queryTools, searchTools, installTools, updateTools);
+                appQueryTools, queryTools, searchTools, installTools, updateTools, processTools);
     }
 
     private ChatClient buildChatClient(OllamaChatModel model,
@@ -169,7 +172,8 @@ public class AgentConfig {
                                        PackageQueryTools queryTools,
                                        PackageSearchTools searchTools,
                                        PackageInstallTools installTools,
-                                       PackageUpdateTools updateTools) {
+                                       PackageUpdateTools updateTools,
+                                       ProcessTools processTools) {
 
         String systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace(
                 "${system_details}", systemInfoService.getSystemDetails());
@@ -177,7 +181,7 @@ public class AgentConfig {
         return ChatClient.builder(model)
                 .defaultSystem(systemPrompt)
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
-                .defaultTools(appQueryTools, queryTools, searchTools, installTools, updateTools)
+                .defaultTools(appQueryTools, queryTools, searchTools, installTools, updateTools, processTools)
                 .build();
     }
 }

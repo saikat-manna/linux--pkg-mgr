@@ -97,6 +97,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <jvmArguments>--module-path ${user.home}/javafx-sdk-25.0.2/lib --add-modules javafx.controls,javafx.graphics</jvmArguments>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
@@ -115,6 +116,12 @@
                             <artifactId>lombok</artifactId>
                         </path>
                     </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>--module-path</arg>
+                        <arg>${user.home}/javafx-sdk-25.0.2/lib</arg>
+                        <arg>--add-modules</arg>
+                        <arg>javafx.controls,javafx.graphics</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
         </plugins>

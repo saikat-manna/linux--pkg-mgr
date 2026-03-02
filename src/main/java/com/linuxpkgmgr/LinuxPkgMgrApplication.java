@@ -1,13 +1,13 @@
 package com.linuxpkgmgr;
 
-import org.springframework.boot.SpringApplication;
+import com.linuxpkgmgr.ui.ChatApp;
+import javafx.application.Application;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.UUID;
 
 
@@ -28,9 +28,10 @@ public class LinuxPkgMgrApplication {
             launchLogTail(logFile.toString(), ProcessHandle.current().pid());
         }
 
-        SpringApplication app = new SpringApplication(LinuxPkgMgrApplication.class);
-        app.setDefaultProperties(Map.of("app.session-id", sessionId));
-        app.run(args);
+        // Pass session-id to ChatApp via named parameter so init() can pick it up
+        String[] jfxArgs = Arrays.copyOf(args, args.length + 1);
+        jfxArgs[args.length] = "--session-id=" + sessionId;
+        Application.launch(ChatApp.class, jfxArgs);
     }
 
     /**
