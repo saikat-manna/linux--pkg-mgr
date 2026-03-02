@@ -17,25 +17,36 @@ import java.util.List;
 @Service
 public class CommandExecutor {
 
+    private record Result(String output, int exitCode) {}
+
     /**
      * Executes a command and returns combined stdout + stderr as a single string.
-     *
-     * @param command the command and its arguments
-     * @return raw output from the process
-     * @throws IOException          if the process cannot be started
-     * @throws InterruptedException if the calling thread is interrupted while waiting
+     * Does not throw on non-zero exit — use {@link #executeChecked} if you need that.
      */
     public String execute(List<String> command) throws IOException, InterruptedException {
-        log.debug("Executing: {}", command);
+        return run(command).output;
+    }
 
+    /**
+     * Like {@link #execute} but throws {@link RuntimeException} if the process exits non-zero.
+     */
+    public String executeChecked(List<String> command) throws IOException, InterruptedException {
+        Result result = run(command);
+        if (result.exitCode != 0) {
+            throw new RuntimeException(
+                    "Command failed (exit " + result.exitCode + "): " + result.output.strip());
+        }
+        return result.output;
+    }
+
+    private Result run(List<String> command) throws IOException, InterruptedException {
+        log.debug("Executing: {}", command);
         Process process = new ProcessBuilder(command)
                 .redirectErrorStream(true)
                 .start();
-
         String output = new String(process.getInputStream().readAllBytes());
         int exitCode = process.waitFor();
-
         log.debug("Exit code: {}, output length: {} chars", exitCode, output.length());
-        return output;
+        return new Result(output, exitCode);
     }
 }
