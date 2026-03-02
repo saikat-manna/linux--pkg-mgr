@@ -5,7 +5,6 @@ import com.linuxpkgmgr.service.CommandExecutor;
 import com.linuxpkgmgr.service.SystemPackageService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -22,67 +21,9 @@ public class PackageQueryTools {
     private final SystemPackageService packageService;
     private final CommandExecutor executor;
 
-    @Value("${pkg-mgr.list.max-results:50}")
-    private int maxResults;
-
     public PackageQueryTools(SystemPackageService packageService, CommandExecutor executor) {
         this.packageService = packageService;
         this.executor = executor;
-    }
-
-    @Tool(description = """
-            Use this when the user asks what packages are installed, wants to see a list of installed software,
-            asks if a specific package is already installed, or wants to check current installations.
-            Lists user-installed packages (excludes system/dependency packages) from both native PM and Flatpak.
-            Do NOT use searchFlathub or searchNativeRepo for this — those only search packages not yet installed.
-            filter: keyword to narrow results by name or description — pass empty string to list all.
-            Results are capped; use a specific filter if there are too many matches.
-            """)
-    public String listInstalledPackages(String filter) {
-        log.debug("listInstalledPackages called — filter: '{}'", filter);
-
-        List<PackageInfo> all;
-        try {
-            all = packageService.listInstalled();
-        } catch (Exception e) {
-            return "Error querying installed packages: " + e.getMessage();
-        }
-
-        log.debug("Total user-installed packages fetched: {}", all.size());
-
-        boolean hasFilter = filter != null && !filter.isBlank();
-        List<PackageInfo> matched = hasFilter
-                ? all.stream()
-                     .filter(p -> matches(p, filter.toLowerCase()))
-                     .toList()
-                : all;
-
-        log.debug("Packages after filtering: {} (hasFilter={})", matched.size(), hasFilter);
-
-        if (matched.isEmpty()) {
-            return hasFilter
-                    ? "No installed packages found matching \"" + filter + "\"."
-                    : "No user-installed packages found.";
-        }
-
-        boolean truncated = matched.size() > maxResults;
-        List<PackageInfo> displayed = truncated ? matched.subList(0, maxResults) : matched;
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("Found ").append(matched.size()).append(" installed package(s)");
-        if (hasFilter) sb.append(" matching \"").append(filter).append("\"");
-        sb.append(":\n\n");
-
-        for (PackageInfo pkg : displayed) {
-            sb.append(format(pkg)).append("\n");
-        }
-
-        if (truncated) {
-            sb.append("\n(Showing ").append(maxResults).append(" of ").append(matched.size())
-              .append(". Use a more specific filter to narrow results.)");
-        }
-
-        return sb.toString();
     }
 
     @Tool(description = """
@@ -90,7 +31,7 @@ public class PackageQueryTools {
             installed size, and source (Flatpak or native repo).
             Use this when the user asks for details about a specific package.
             packageName: exact native package name or Flatpak application ID (e.g. org.videolan.VLC).
-            If unsure of the exact name, call listInstalledPackages first to find it.
+            If unsure of the exact name, call listInstalledApps first to find it.
             """)
     public String getPackageInfo(String packageName) {
         log.debug("getPackageInfo called — packageName: '{}'", packageName);
@@ -178,18 +119,4 @@ public class PackageQueryTools {
         return "[native] " + packageName + "\n" + cleaned;
     }
 
-    private boolean matches(PackageInfo pkg, String keyword) {
-        return pkg.name().toLowerCase().contains(keyword)
-                || pkg.id().toLowerCase().contains(keyword)
-                || pkg.summary().toLowerCase().contains(keyword);
-    }
-
-    private String format(PackageInfo pkg) {
-        String tag = pkg.source() == PackageInfo.Source.FLATPAK ? "[flatpak]" : "[native] ";
-        String label = pkg.source() == PackageInfo.Source.FLATPAK
-                ? pkg.name() + " (" + pkg.id() + ")"
-                : pkg.id();
-        String summary = pkg.summary().isBlank() ? "" : " — " + pkg.summary();
-        return "%s  %-45s %s%s".formatted(tag, label, pkg.version(), summary);
-    }
 }

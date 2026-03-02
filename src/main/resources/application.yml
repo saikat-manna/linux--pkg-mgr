@@ -25,7 +25,3 @@ pkg-mgr:
   list:
     max-results: 50   # cap on packages returned to the LLM in a single response
 
-logging:
-  level:
-    com.linuxpkgmgr: DEBUG
-    org.springframework.ai: INFO

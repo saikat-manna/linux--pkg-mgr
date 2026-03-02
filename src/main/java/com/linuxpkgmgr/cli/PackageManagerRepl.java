@@ -2,12 +2,12 @@ package com.linuxpkgmgr.cli;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import java.util.Scanner;
-import java.util.UUID;
 
 /**
  * Interactive REPL for the agentic package manager.
@@ -27,7 +27,9 @@ public class PackageManagerRepl implements ApplicationRunner {
             """;
 
     private final ChatClient chatClient;
-    private final String sessionId = UUID.randomUUID().toString();
+
+    @Value("${app.session-id}")
+    private String sessionId;
 
     public PackageManagerRepl(ChatClient chatClient) {
         this.chatClient = chatClient;

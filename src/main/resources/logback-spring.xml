@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- APP_SESSION_ID is set as a JVM system property in main() before Spring starts -->
+
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>temp/logs/session-${APP_SESSION_ID}.log</file>
+        <append>false</append> <!-- fresh file every run -->
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %-45logger{45} — %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- application code: DEBUG and above → file -->
+    <logger name="com.linuxpkgmgr" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <!-- Spring AI: INFO and above → file -->
+    <logger name="org.springframework.ai" level="INFO" additivity="false">
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <!-- everything else: WARN and above → file, no console noise -->
+    <root level="WARN">
+        <appender-ref ref="FILE"/>
+    </root>
+
+</configuration>
