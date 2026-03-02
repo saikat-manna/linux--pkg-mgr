@@ -1,7 +1,5 @@
 package com.linuxpkgmgr.cli;
 
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -26,13 +24,13 @@ public class PackageManagerRepl implements ApplicationRunner {
             ╚══════════════════════════════════════════════╝
             """;
 
-    private final ChatClient chatClient;
+    private final RoutingChatClient routingClient;
 
     @Value("${app.session-id}")
     private String sessionId;
 
-    public PackageManagerRepl(ChatClient chatClient) {
-        this.chatClient = chatClient;
+    public PackageManagerRepl(RoutingChatClient routingClient) {
+        this.routingClient = routingClient;
     }
 
     @Override
@@ -51,13 +49,7 @@ public class PackageManagerRepl implements ApplicationRunner {
                 if ("exit".equalsIgnoreCase(input) || "quit".equalsIgnoreCase(input)) break;
 
                 try {
-                    String response = chatClient.prompt()
-                            .user(input)
-                            .advisors(a -> a.param(
-                                    "chat_memory_conversation_id", sessionId))
-                            .call()
-                            .content();
-
+                    String response = routingClient.chat(input, sessionId);
                     System.out.println("\n" + response + "\n");
                 } catch (Exception e) {
                     System.err.println("[Error] " + e.getMessage());

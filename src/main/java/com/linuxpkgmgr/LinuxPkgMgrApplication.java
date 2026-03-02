@@ -25,7 +25,7 @@ public class LinuxPkgMgrApplication {
         if (Arrays.asList(args).contains("--dev")) {
             Path logFile = logDir.resolve("session-" + sessionId + ".log");
             Files.createFile(logFile); // create now so tail -f has a file to open
-            launchLogTail(logFile.toString());
+            launchLogTail(logFile.toString(), ProcessHandle.current().pid());
         }
 
         SpringApplication app = new SpringApplication(LinuxPkgMgrApplication.class);
@@ -35,14 +35,16 @@ public class LinuxPkgMgrApplication {
 
     /**
      * Opens a secondary terminal window tailing the session log file.
+     * Uses {@code tail --pid} so the window closes automatically when the JVM exits.
      * Tries common terminal emulators in order of preference.
      */
-    private static void launchLogTail(String logFile) {
+    private static void launchLogTail(String logFile, long parentPid) {
+        String tailCmd = "tail --pid=" + parentPid + " -f " + logFile;
         String[][] candidates = {
-            {"konsole",        "--noclose", "-e", "tail", "-f", logFile},
-            {"gnome-terminal", "--",        "tail", "-f", logFile},
-            {"xfce4-terminal", "--hold", "-e", "tail -f " + logFile},
-            {"xterm",          "-hold", "-e", "tail -f " + logFile},
+            {"konsole",        "-e", "tail", "--pid=" + parentPid, "-f", logFile},
+            {"gnome-terminal", "--",  "tail", "--pid=" + parentPid, "-f", logFile},
+            {"xfce4-terminal", "-e", tailCmd},
+            {"xterm",          "-e", tailCmd},
         };
 
         for (String[] cmd : candidates) {

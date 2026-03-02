@@ -25,3 +25,9 @@ pkg-mgr:
   list:
     max-results: 50   # cap on packages returned to the LLM in a single response
 
+  cloud:
+    base-url: http://localhost:11435   # override with your remote Ollama URL
+    model: gpt-oss:120b-cloud                 # larger tool-calling capable model
+    temperature: 0.2
+    num-ctx: 32768
+

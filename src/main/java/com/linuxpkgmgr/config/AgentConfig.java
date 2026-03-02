@@ -12,6 +12,10 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.ai.ollama.api.OllamaApi;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -50,6 +54,7 @@ public class AgentConfig {
               with source (Flatpak / native) and a short description, then install only after confirmation.
             - Be concise and friendly. Show progress clearly.
             - If a command requires sudo/root, state that clearly.
+            - ALWAYS call the appropriate tool for current information. Never answer from memory alone.
             """;
 
     @Bean
@@ -59,15 +64,112 @@ public class AgentConfig {
                 .build();
     }
 
-    @Bean
-    public ChatClient chatClient(OllamaChatModel model,
-                                 ChatMemory chatMemory,
-                                 SystemInfoService systemInfoService,
-                                 AppQueryTools appQueryTools,
-                                 PackageQueryTools queryTools,
-                                 PackageSearchTools searchTools,
-                                 PackageInstallTools installTools,
-                                 PackageUpdateTools updateTools) {
+    /**
+     * Local model — explicitly created from spring.ai.ollama.* properties.
+     * We cannot rely on the auto-configured bean because Spring AI's
+     * @ConditionalOnMissingBean(OllamaChatModel.class) suppresses it as soon as
+     * cloudChatModel (also OllamaChatModel) is registered.
+     */
+    @Bean("localChatModel")
+    public OllamaChatModel localChatModel(
+            @Value("${spring.ai.ollama.base-url}") String baseUrl,
+            @Value("${spring.ai.ollama.chat.model}") String model,
+            @Value("${spring.ai.ollama.chat.options.temperature:0.2}") double temperature,
+            @Value("${spring.ai.ollama.chat.options.num-ctx:8192}") int numCtx) {
+
+        return OllamaChatModel.builder()
+                .ollamaApi(OllamaApi.builder().baseUrl(baseUrl).build())
+                .defaultOptions(OllamaChatOptions.builder()
+                        .model(model)
+                        .temperature(temperature)
+                        .numCtx(numCtx)
+                        .build())
+                .build();
+    }
+
+    /**
+     * Cloud model — larger, remote Ollama instance (configured via pkg-mgr.cloud.*).
+     */
+    @Bean("cloudChatModel")
+    public OllamaChatModel cloudChatModel(
+            @Value("${pkg-mgr.cloud.base-url}") String baseUrl,
+            @Value("${pkg-mgr.cloud.model}") String model,
+            @Value("${pkg-mgr.cloud.temperature:0.2}") double temperature,
+            @Value("${pkg-mgr.cloud.num-ctx:32768}") int numCtx) {
+
+        return OllamaChatModel.builder()
+                .ollamaApi(OllamaApi.builder().baseUrl(baseUrl).build())
+                .defaultOptions(OllamaChatOptions.builder()
+                        .model(model)
+                        .temperature(temperature)
+                        .numCtx(numCtx)
+                        .build())
+                .build();
+    }
+
+    @Bean("localChatClient")
+    public ChatClient localChatClient(
+            @Qualifier("localChatModel") OllamaChatModel localChatModel,
+            ChatMemory chatMemory,
+            SystemInfoService systemInfoService,
+            AppQueryTools appQueryTools,
+            PackageQueryTools queryTools,
+            PackageSearchTools searchTools,
+            PackageInstallTools installTools,
+            PackageUpdateTools updateTools) {
+
+        return buildChatClient(localChatModel, chatMemory, systemInfoService,
+                appQueryTools, queryTools, searchTools, installTools, updateTools);
+    }
+
+    /**
+     * Cloud advisor — bare cloud client used to generate a planning hint before the local model runs.
+     * No tools, no memory: one-shot reasoning only. The hint is injected into the local model's
+     * user message so the smaller model benefits from the larger model's analysis.
+     */
+    @Bean("cloudAdvisorClient")
+    public ChatClient cloudAdvisorClient(@Qualifier("cloudChatModel") OllamaChatModel cloudChatModel) {
+        return ChatClient.builder(cloudChatModel)
+                .defaultSystem("""
+                        You are a concise query planner for a Linux package manager assistant.
+                        Given a user request, output a brief plan (1-3 sentences) that identifies:
+                        - What the user wants
+                        - Which tool(s) to call and with what parameter values
+                        Available tools: listInstalledApps(category), getPackageInfo(packageName), \
+                        searchFlathub(query), searchNativeRepo(query), installFlatpak(appId), \
+                        installNativePackage(name), removeFlatpak(appId), removeNativePackage(name).
+                        Reply with only the plan. No preamble, no explanation.
+                        """)
+                .build();
+    }
+
+    /**
+     * Cloud ChatClient — shares the same ChatMemory as localChatClient so context
+     * flows across model switches.
+     */
+    @Bean("cloudChatClient")
+    public ChatClient cloudChatClient(
+            @Qualifier("cloudChatModel") OllamaChatModel cloudChatModel,
+            ChatMemory chatMemory,
+            SystemInfoService systemInfoService,
+            AppQueryTools appQueryTools,
+            PackageQueryTools queryTools,
+            PackageSearchTools searchTools,
+            PackageInstallTools installTools,
+            PackageUpdateTools updateTools) {
+
+        return buildChatClient(cloudChatModel, chatMemory, systemInfoService,
+                appQueryTools, queryTools, searchTools, installTools, updateTools);
+    }
+
+    private ChatClient buildChatClient(OllamaChatModel model,
+                                       ChatMemory chatMemory,
+                                       SystemInfoService systemInfoService,
+                                       AppQueryTools appQueryTools,
+                                       PackageQueryTools queryTools,
+                                       PackageSearchTools searchTools,
+                                       PackageInstallTools installTools,
+                                       PackageUpdateTools updateTools) {
 
         String systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace(
                 "${system_details}", systemInfoService.getSystemDetails());
