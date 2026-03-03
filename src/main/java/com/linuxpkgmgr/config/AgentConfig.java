@@ -9,13 +9,22 @@ import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class AgentConfig {
+
+    @Value("${spring.ai.ollama.base-url}")       private String localBaseUrl;
+    @Value("${spring.ai.ollama.chat.model}")      private String localModel;
+    @Value("${spring.ai.ollama.chat.options.temperature:0.2}") private double localTemperature;
+    @Value("${spring.ai.ollama.chat.options.num-ctx:8192}")    private int localNumCtx;
+
+    @Value("${pkg-mgr.cloud.base-url}")           private String cloudBaseUrl;
+    @Value("${pkg-mgr.cloud.model}")              private String cloudModel;
+    @Value("${pkg-mgr.cloud.temperature:0.2}")    private double cloudTemperature;
+    @Value("${pkg-mgr.cloud.num-ctx:32768}")      private int cloudNumCtx;
 
     /**
      * System prompt template.
@@ -59,66 +68,19 @@ public class AgentConfig {
                 .build();
     }
 
-    /**
-     * Local model — explicitly created from spring.ai.ollama.* properties.
-     * We cannot rely on the auto-configured bean because Spring AI's
-     * @ConditionalOnMissingBean(OllamaChatModel.class) suppresses it as soon as
-     * cloudChatModel (also OllamaChatModel) is registered.
-     */
-    @Bean("localChatModel")
-    public OllamaChatModel localChatModel(
-            @Value("${spring.ai.ollama.base-url}") String baseUrl,
-            @Value("${spring.ai.ollama.chat.model}") String model,
-            @Value("${spring.ai.ollama.chat.options.temperature:0.2}") double temperature,
-            @Value("${spring.ai.ollama.chat.options.num-ctx:8192}") int numCtx) {
-
-        return OllamaChatModel.builder()
-                .ollamaApi(OllamaApi.builder().baseUrl(baseUrl).build())
-                .defaultOptions(OllamaChatOptions.builder()
-                        .model(model)
-                        .temperature(temperature)
-                        .numCtx(numCtx)
-                        .build())
-                .build();
-    }
-
-    /**
-     * Cloud model — larger, remote Ollama instance (configured via pkg-mgr.cloud.*).
-     */
-    @Bean("cloudChatModel")
-    public OllamaChatModel cloudChatModel(
-            @Value("${pkg-mgr.cloud.base-url}") String baseUrl,
-            @Value("${pkg-mgr.cloud.model}") String model,
-            @Value("${pkg-mgr.cloud.temperature:0.2}") double temperature,
-            @Value("${pkg-mgr.cloud.num-ctx:32768}") int numCtx) {
-
-        return OllamaChatModel.builder()
-                .ollamaApi(OllamaApi.builder().baseUrl(baseUrl).build())
-                .defaultOptions(OllamaChatOptions.builder()
-                        .model(model)
-                        .temperature(temperature)
-                        .numCtx(numCtx)
-                        .build())
-                .build();
-    }
-
     @Bean("localChatClient")
-    public ChatClient localChatClient(
-            @Qualifier("localChatModel") OllamaChatModel localChatModel,
-            ChatMemory chatMemory,
-            SystemInfoService systemInfoService) {
-
-        return buildChatClient(localChatModel, chatMemory, systemInfoService);
+    public ChatClient localChatClient(ChatMemory chatMemory, SystemInfoService systemInfoService,
+                                      PayloadInterceptorAdvisor payloadInterceptor) {
+        return buildChatClient(localModel(), chatMemory, systemInfoService, payloadInterceptor);
     }
 
     /**
      * Cloud advisor — bare cloud client used to generate a planning hint before the local model runs.
-     * No tools, no memory: one-shot reasoning only. The hint is injected into the local model's
-     * user message so the smaller model benefits from the larger model's analysis.
+     * No tools, no memory: one-shot reasoning only.
      */
     @Bean("cloudAdvisorClient")
-    public ChatClient cloudAdvisorClient(@Qualifier("cloudChatModel") OllamaChatModel cloudChatModel) {
-        return ChatClient.builder(cloudChatModel)
+    public ChatClient cloudAdvisorClient() {
+        return ChatClient.builder(cloudModel())
                 .defaultSystem("""
                         You are a concise query planner for a Linux package manager assistant.
                         Given a user request, output a brief plan (1-3 sentences) that identifies:
@@ -137,24 +99,46 @@ public class AgentConfig {
      * flows across model switches.
      */
     @Bean("cloudChatClient")
-    public ChatClient cloudChatClient(
-            @Qualifier("cloudChatModel") OllamaChatModel cloudChatModel,
-            ChatMemory chatMemory,
-            SystemInfoService systemInfoService) {
+    public ChatClient cloudChatClient(ChatMemory chatMemory, SystemInfoService systemInfoService,
+                                      PayloadInterceptorAdvisor payloadInterceptor) {
+        return buildChatClient(cloudModel(), chatMemory, systemInfoService, payloadInterceptor);
+    }
 
-        return buildChatClient(cloudChatModel, chatMemory, systemInfoService);
+    private OllamaChatModel localModel() {
+        return OllamaChatModel.builder()
+                .ollamaApi(OllamaApi.builder().baseUrl(localBaseUrl).build())
+                .defaultOptions(OllamaChatOptions.builder()
+                        .model(localModel)
+                        .temperature(localTemperature)
+                        .numCtx(localNumCtx)
+                        .build())
+                .build();
+    }
+
+    private OllamaChatModel cloudModel() {
+        return OllamaChatModel.builder()
+                .ollamaApi(OllamaApi.builder().baseUrl(cloudBaseUrl).build())
+                .defaultOptions(OllamaChatOptions.builder()
+                        .model(cloudModel)
+                        .temperature(cloudTemperature)
+                        .numCtx(cloudNumCtx)
+                        .build())
+                .build();
     }
 
     private ChatClient buildChatClient(OllamaChatModel model,
                                        ChatMemory chatMemory,
-                                       SystemInfoService systemInfoService) {
+                                       SystemInfoService systemInfoService,
+                                       PayloadInterceptorAdvisor payloadInterceptor) {
 
         String systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace(
                 "${system_details}", systemInfoService.getSystemDetails());
 
         return ChatClient.builder(model)
                 .defaultSystem(systemPrompt)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .defaultAdvisors(
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
+                        payloadInterceptor)
                 .build();
     }
 }
