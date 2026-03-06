@@ -17,7 +17,7 @@ import java.util.List;
  */
 @Slf4j
 @Component
-public class ServiceManagementTools {
+public class ServiceManagementTools implements ToolBean {
 
     private final SudoService sudoService;
     private final CommandExecutor executor;

@@ -4,8 +4,8 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 /**
  * Scans all tool beans for {@link PkgTool}-annotated methods at startup and
@@ -16,21 +16,12 @@ public class ToolIntentRegistry {
 
     private final Map<String, IntentRole> rolesByName;
 
-    public ToolIntentRegistry(AppQueryTools appQueryTools,
-                              PackageQueryTools packageQueryTools,
-                              PackageSearchTools packageSearchTools,
-                              PackageInstallTools packageInstallTools,
-                              PackageUpdateTools packageUpdateTools,
-                              ProcessTools processTools,
-                              ServiceManagementTools serviceManagementTools) {
+    public ToolIntentRegistry(List<ToolBean> toolBeans) {
         rolesByName = new HashMap<>();
-        Stream.of(appQueryTools, packageQueryTools, packageSearchTools,
-                        packageInstallTools, packageUpdateTools, processTools,
-                        serviceManagementTools)
-                .forEach(this::scanBean);
+        toolBeans.forEach(this::scanBean);
     }
 
-    private void scanBean(Object bean) {
+    private void scanBean(ToolBean bean) {
         for (Method method : bean.getClass().getDeclaredMethods()) {
             PkgTool ann = method.getAnnotation(PkgTool.class);
             if (ann != null) {

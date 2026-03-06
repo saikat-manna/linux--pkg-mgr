@@ -17,7 +17,7 @@ import java.util.List;
  */
 @Slf4j
 @Component
-public class PackageSearchTools {
+public class PackageSearchTools implements ToolBean {
 
     private static final int MAX_RESULTS = 20;
 

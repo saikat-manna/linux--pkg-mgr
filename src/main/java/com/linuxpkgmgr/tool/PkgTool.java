@@ -38,4 +38,7 @@ public @interface PkgTool {
 
     /** Role of this tool in the intent lifecycle. */
     IntentRole role() default IntentRole.NEUTRAL;
+
+    /** If true, always included in every LLM call regardless of similarity score. */
+    boolean anchor() default false;
 }

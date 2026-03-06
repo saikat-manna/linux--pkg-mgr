@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
-public class AppQueryTools {
+public class AppQueryTools implements ToolBean {
 
     /** Maps common user-facing aliases to freedesktop.org Main Category names. */
     private static final Map<String, String> ALIASES = Map.ofEntries(

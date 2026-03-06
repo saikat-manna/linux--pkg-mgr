@@ -23,7 +23,7 @@ import java.util.List;
  */
 @Slf4j
 @Component
-public class PackageInstallTools {
+public class PackageInstallTools implements ToolBean {
 
     private final SystemPackageService packageService;
     private final CommandExecutor executor;

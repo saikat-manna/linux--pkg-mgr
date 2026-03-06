@@ -5,6 +5,8 @@ spring:
   ai:
     ollama:
       base-url: http://localhost:11435
+      embedding:
+        model: nomic-embed-text   # ollama pull nomic-embed-text
       chat:
         model: qwen2.5:3b     # any tool-calling capable model: qwen2.5, llama3.2, mistral-nemo
         options:
@@ -24,6 +26,10 @@ spring:
 pkg-mgr:
   list:
     max-results: 50   # cap on packages returned to the LLM in a single response
+
+  tools:
+    top-k: 6                    # max tools returned per query
+    similarity-threshold: 0.4   # minimum cosine similarity to include a tool
 
   cloud:
     base-url: http://localhost:11435   # override with your remote Ollama URL

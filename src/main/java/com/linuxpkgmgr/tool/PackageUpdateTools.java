@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  * The agent MUST confirm with the user before calling mutating tools.
  */
 @Component
-public class PackageUpdateTools {
+public class PackageUpdateTools implements ToolBean {
 
     private final SystemPackageService packageService;
 

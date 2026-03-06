@@ -15,7 +15,7 @@ import java.util.List;
  */
 @Slf4j
 @Component
-public class ProcessTools {
+public class ProcessTools implements ToolBean {
 
     private static final int MAX_RESULTS = 20;
 

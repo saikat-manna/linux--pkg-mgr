@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
-public class PackageQueryTools {
+public class PackageQueryTools implements ToolBean {
 
     private final SystemPackageService packageService;
     private final CommandExecutor executor;
