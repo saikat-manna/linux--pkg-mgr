@@ -1,7 +1,8 @@
 package com.linuxpkgmgr.tool;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.tool.annotation.Tool;
+import com.linuxpkgmgr.tool.IntentRole;
+import com.linuxpkgmgr.tool.PkgTool;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
@@ -18,7 +19,7 @@ public class ProcessTools {
 
     private static final int MAX_RESULTS = 20;
 
-    @Tool(description = """
+    @PkgTool(name = "list_running_processes", role = IntentRole.START, description = """
             Lists currently running processes on the system, showing PID, name, CPU%, memory%,
             RSS (resident memory), and the owning user.
             Use this when the user asks things like "what's running", "show processes",

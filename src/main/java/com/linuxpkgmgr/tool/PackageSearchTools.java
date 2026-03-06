@@ -3,7 +3,8 @@ package com.linuxpkgmgr.tool;
 import com.linuxpkgmgr.service.CommandExecutor;
 import com.linuxpkgmgr.service.SystemPackageService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.tool.annotation.Tool;
+import com.linuxpkgmgr.tool.IntentRole;
+import com.linuxpkgmgr.tool.PkgTool;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -28,7 +29,7 @@ public class PackageSearchTools {
         this.executor = executor;
     }
 
-    @Tool(description = """
+    @PkgTool(name = "search_flathub", role = IntentRole.START, description = """
             Searches Flathub for Flatpak applications NOT YET INSTALLED on the system.
             Use this ONLY when the user wants to discover or install new packages.
             Do NOT use this to list or query already-installed packages — use listInstalledPackages for that.
@@ -82,7 +83,7 @@ public class PackageSearchTools {
         return sb.toString();
     }
 
-    @Tool(description = """
+    @PkgTool(name = "search_native_repo", role = IntentRole.START, description = """
             Searches the native system repository (dnf/apt/pacman/zypper) for packages NOT YET INSTALLED.
             Use this ONLY when the user wants to discover or install new packages from the native repo.
             Do NOT use this to list or query already-installed packages — use listInstalledPackages for that.

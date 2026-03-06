@@ -4,7 +4,8 @@ import com.linuxpkgmgr.model.PackageInfo;
 import com.linuxpkgmgr.service.CommandExecutor;
 import com.linuxpkgmgr.service.SystemPackageService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.tool.annotation.Tool;
+import com.linuxpkgmgr.tool.IntentRole;
+import com.linuxpkgmgr.tool.PkgTool;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -26,7 +27,7 @@ public class PackageQueryTools {
         this.executor = executor;
     }
 
-    @Tool(description = """
+    @PkgTool(name = "get_package_info", description = """
             Returns detailed information about a specific installed package — version, description,
             installed size, and source (Flatpak or native repo).
             Use this when the user asks for details about a specific package.

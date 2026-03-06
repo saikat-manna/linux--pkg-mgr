@@ -4,7 +4,8 @@ import com.linuxpkgmgr.service.CommandExecutor;
 import com.linuxpkgmgr.service.SudoService;
 import com.linuxpkgmgr.service.SystemPackageService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.tool.annotation.Tool;
+import com.linuxpkgmgr.tool.IntentRole;
+import com.linuxpkgmgr.tool.PkgTool;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -40,7 +41,7 @@ public class PackageInstallTools {
     // Flatpak — polkit handles auth; no explicit sudo needed
     // -------------------------------------------------------------------------
 
-    @Tool(description = """
+    @PkgTool(name = "install_flatpak", role = IntentRole.END, description = """
             Installs a Flatpak application from Flathub.
             Call this only after the user has explicitly confirmed the installation.
             appId: the Flatpak application ID (e.g. 'org.videolan.VLC').
@@ -62,7 +63,7 @@ public class PackageInstallTools {
         }
     }
 
-    @Tool(description = """
+    @PkgTool(name = "remove_flatpak", role = IntentRole.END, description = """
             Removes a Flatpak application from the system.
             Call this only after the user has explicitly confirmed the removal.
             appId: the Flatpak application ID (e.g. 'org.videolan.VLC').
@@ -87,7 +88,7 @@ public class PackageInstallTools {
     // Native package manager — requires sudo (password popup shown as needed)
     // -------------------------------------------------------------------------
 
-    @Tool(description = """
+    @PkgTool(name = "install_native_package", role = IntentRole.END, description = """
             Installs a package using the native system package manager (dnf/apt/pacman/zypper).
             Use only when the package is not available as a Flatpak or is a system-level package.
             Call this only after the user has explicitly confirmed the installation.
@@ -109,7 +110,7 @@ public class PackageInstallTools {
         }
     }
 
-    @Tool(description = """
+    @PkgTool(name = "remove_native_package", role = IntentRole.END, description = """
             Removes a package using the native system package manager (dnf/apt/pacman/zypper).
             Call this only after the user has explicitly confirmed the removal.
             Requires sudo/root privileges — a password popup will appear if needed.

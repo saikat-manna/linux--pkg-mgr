@@ -6,6 +6,7 @@ import com.linuxpkgmgr.tool.PackageQueryTools;
 import com.linuxpkgmgr.tool.PackageSearchTools;
 import com.linuxpkgmgr.tool.PackageUpdateTools;
 import com.linuxpkgmgr.tool.ProcessTools;
+import com.linuxpkgmgr.tool.ServiceManagementTools;
 import org.springframework.stereotype.Component;
 
 /**
@@ -25,10 +26,12 @@ public class ToolSelector {
                         PackageSearchTools packageSearchTools,
                         PackageInstallTools packageInstallTools,
                         PackageUpdateTools packageUpdateTools,
-                        ProcessTools processTools) {
+                        ProcessTools processTools,
+                        ServiceManagementTools serviceManagementTools) {
         this.allTools = new Object[]{
                 appQueryTools, packageQueryTools, packageSearchTools,
-                packageInstallTools, packageUpdateTools, processTools
+                packageInstallTools, packageUpdateTools, processTools,
+                serviceManagementTools
         };
     }
 

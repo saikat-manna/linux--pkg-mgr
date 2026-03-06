@@ -1,7 +1,8 @@
 package com.linuxpkgmgr.tool;
 
 import com.linuxpkgmgr.service.SystemPackageService;
-import org.springframework.ai.tool.annotation.Tool;
+import com.linuxpkgmgr.tool.IntentRole;
+import com.linuxpkgmgr.tool.PkgTool;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,7 +18,7 @@ public class PackageUpdateTools {
         this.packageService = packageService;
     }
 
-    @Tool(description = """
+    @PkgTool(name = "check_flatpak_updates", description = """
             Checks for available updates for all installed Flatpak applications.
             Safe to call without confirmation — read-only check.
             Returns a list of apps with pending updates and their new versions.
@@ -28,7 +29,7 @@ public class PackageUpdateTools {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
-    @Tool(description = """
+    @PkgTool(name = "check_native_updates", description = """
             Checks for available updates via the native system package manager (dnf/apt/pacman/zypper).
             Safe to call without confirmation — read-only check.
             Returns a list of packages with pending updates.
@@ -39,7 +40,7 @@ public class PackageUpdateTools {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
-    @Tool(description = """
+    @PkgTool(name = "update_flatpak", role = IntentRole.END, description = """
             Updates a specific Flatpak application to the latest version.
             Call this only after the user has explicitly confirmed the update.
             Pass 'ALL' as appId to update all installed Flatpak apps.
@@ -51,7 +52,7 @@ public class PackageUpdateTools {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
-    @Tool(description = """
+    @PkgTool(name = "update_native_package", role = IntentRole.END, description = """
             Updates a specific native package, or performs a full system upgrade.
             Call this only after the user has explicitly confirmed the update.
             Requires sudo/root privileges.

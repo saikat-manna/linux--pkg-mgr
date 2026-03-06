@@ -5,7 +5,8 @@ import com.linuxpkgmgr.model.PackageInfo;
 import com.linuxpkgmgr.service.DesktopFileService;
 import com.linuxpkgmgr.service.SystemPackageService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.tool.annotation.Tool;
+import com.linuxpkgmgr.tool.IntentRole;
+import com.linuxpkgmgr.tool.PkgTool;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -67,7 +68,7 @@ public class AppQueryTools {
         this.desktopFileService = desktopFileService;
     }
 
-    @Tool(description = """
+    @PkgTool(name = "list_installed_apps", role = IntentRole.START, description = """
             Lists installed GUI applications visible in the app menu, optionally filtered by
             category. The category parameter MUST be a single word — resolve the user's natural
             language request to one of these canonical values before calling this tool:
