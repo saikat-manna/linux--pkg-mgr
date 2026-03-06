@@ -6,9 +6,12 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
+import org.springframework.ai.ollama.api.OllamaEmbeddingOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +23,8 @@ public class AgentConfig {
     @Value("${spring.ai.ollama.chat.model}")      private String localModel;
     @Value("${spring.ai.ollama.chat.options.temperature:0.2}") private double localTemperature;
     @Value("${spring.ai.ollama.chat.options.num-ctx:8192}")    private int localNumCtx;
+
+    @Value("${spring.ai.ollama.embedding.model}")  private String embeddingModelName;
 
     @Value("${pkg-mgr.cloud.base-url}")           private String cloudBaseUrl;
     @Value("${pkg-mgr.cloud.model}")              private String cloudModel;
@@ -60,6 +65,16 @@ public class AgentConfig {
             - If a command requires sudo/root, state that clearly.
             - ALWAYS call the appropriate tool for current information. Never answer from memory alone.
             """;
+
+    @Bean
+    public EmbeddingModel embeddingModel() {
+        return OllamaEmbeddingModel.builder()
+                .ollamaApi(OllamaApi.builder().baseUrl(localBaseUrl).build())
+                .defaultOptions(OllamaEmbeddingOptions.builder()
+                        .model(embeddingModelName)
+                        .build())
+                .build();
+    }
 
     @Bean
     public ChatMemory chatMemory() {
