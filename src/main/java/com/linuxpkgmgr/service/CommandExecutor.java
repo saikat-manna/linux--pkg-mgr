@@ -47,6 +47,18 @@ public class CommandExecutor {
         return result.output;
     }
 
+    /**
+     * Launches a command as a detached background process and returns immediately.
+     * No output is captured; the process lifecycle is not managed.
+     */
+    public void fireAndForget(List<String> command) throws IOException {
+        log.debug("Launching (detached): {}", command);
+        shellOutputBus.emit("$ " + String.join(" ", command) + " &");
+        new ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .start();
+    }
+
     private Result run(List<String> command) throws IOException, InterruptedException {
         log.debug("Executing: {}", command);
         shellOutputBus.emit("$ " + String.join(" ", command));

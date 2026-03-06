@@ -4,23 +4,23 @@ import com.linuxpkgmgr.service.CommandExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Tool for searching files and directories recursively in the user's home directory.
- * Delegates to the system `find` command for fast native filesystem traversal.
+ * Tools for filesystem operations: searching files and opening them with an application.
  */
 @Slf4j
 @Component
-public class FileSearchTools implements ToolBean {
+public class FileTools implements ToolBean {
 
     private static final int MAX_RESULTS = 50;
     private static final String HOME = System.getProperty("user.home");
 
     private final CommandExecutor executor;
 
-    public FileSearchTools(CommandExecutor executor) {
+    public FileTools(CommandExecutor executor) {
         this.executor = executor;
     }
 
@@ -81,6 +81,41 @@ public class FileSearchTools implements ToolBean {
               .append(" matches. Refine with a more specific pattern.)");
         }
         return sb.toString();
+    }
+
+    @PkgTool(name = "open_file", role = IntentRole.END, description = """
+            Opens a file using a specified application.
+            Use this when the user asks to open, launch, view, or edit a file with a specific app.
+            Examples: "open my resume with LibreOffice", "view report.pdf in evince",
+            "edit config.txt in gedit", "open the photo in gimp".
+            filePath:        absolute or home-relative path to the file (e.g. ~/docs/resume.pdf).
+            applicationPath: command or full path of the application
+                             (e.g. "libreoffice", "evince", "gedit", "gimp", "firefox").
+            The application is launched in the background — the tool returns immediately.
+            """)
+    public String openFile(String filePath, String applicationPath) {
+        log.debug("open_file — file='{}' app='{}'", filePath, applicationPath);
+
+        if (filePath == null || filePath.isBlank())
+            return "Please provide the file path to open.";
+        if (applicationPath == null || applicationPath.isBlank())
+            return "Please provide the application to open the file with.";
+
+        String resolvedPath = filePath.startsWith("~/")
+                ? HOME + filePath.substring(1)
+                : filePath;
+
+        File file = new File(resolvedPath);
+        if (!file.exists())
+            return "File not found: " + resolvedPath;
+
+        try {
+            executor.fireAndForget(List.of(applicationPath, resolvedPath));
+            return "Opened \"" + file.getName() + "\" with " + applicationPath + ".";
+        } catch (Exception e) {
+            log.error("open_file failed", e);
+            return "Failed to open file: " + e.getMessage();
+        }
     }
 
     private List<String> buildFindCommand(String namePattern, String extension, String type) {
