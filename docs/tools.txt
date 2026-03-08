@@ -1,0 +1,233 @@
+Linux Package Manager — Available Tools
+========================================
+
+Tools are discovered via @PkgTool annotations and injected per-request through
+semantic similarity search (ToolEmbeddingIndex). Each tool is listed below with
+its name, source class, role, and description.
+
+Role values:
+  START   — typically called first to query/search before acting
+  NEUTRAL — informational, can be called at any point
+  END     — mutating action; agent MUST get user confirmation before calling
+
+------------------------------------------------------------------------
+
+[AppQueryTools]
+
+  name: list_installed_apps
+  role: START
+  description:
+    Lists installed GUI applications visible in the app menu, optionally filtered by
+    category. The category parameter MUST be a single word — resolve the user's natural
+    language request to one of these canonical values before calling this tool:
+      AudioVideo, Development, Graphics, Network, Office, Game, Utility,
+      Education, Science, System, Settings.
+    Examples: "media player" → AudioVideo, "web browser" → WebBrowser,
+    "text editor" or "IDE" → Development, "image editor" → Graphics,
+    "email client" → Email, "chat" → InstantMessaging,
+    "games" → Game, "office suite" → Office.
+    Leave category blank to list all installed apps.
+
+------------------------------------------------------------------------
+
+[PackageQueryTools]
+
+  name: get_package_info
+  role: NEUTRAL
+  description:
+    Returns detailed information about a specific installed package — version, description,
+    installed size, and source (Flatpak or native repo).
+    Use this when the user asks for details about a specific package.
+    packageName: exact native package name or Flatpak application ID (e.g. org.videolan.VLC).
+    If unsure of the exact name, call listInstalledApps first to find it.
+
+------------------------------------------------------------------------
+
+[PackageSearchTools]
+
+  name: search_flathub
+  role: START
+  description:
+    Searches Flathub for Flatpak applications NOT YET INSTALLED on the system.
+    Use this ONLY when the user wants to discover or install new packages.
+    Do NOT use this to list or query already-installed packages — use listInstalledPackages for that.
+    Use this before searchNativeRepo; check Flathub first.
+    query: keyword, app name, or description term (e.g. 'media player', 'vlc', 'scanner').
+    Returns application name, ID, description, and version.
+
+  name: search_native_repo
+  role: START
+  description:
+    Searches the native system repository (dnf/apt/pacman/zypper) for packages NOT YET INSTALLED.
+    Use this ONLY when the user wants to discover or install new packages from the native repo.
+    Do NOT use this to list or query already-installed packages — use listInstalledPackages for that.
+    Use this after searchFlathub when the package is not on Flathub, or for system-level packages
+    (drivers, libraries, CLI tools) that should not be Flatpaks.
+    query: keyword or package name.
+
+------------------------------------------------------------------------
+
+[PackageInstallTools]
+
+  name: install_flatpak
+  role: END
+  description:
+    Installs a Flatpak application from Flathub.
+    Call this only after the user has explicitly confirmed the installation.
+    appId: the Flatpak application ID (e.g. 'org.videolan.VLC').
+    This may take several minutes while the package downloads.
+    Returns installation output or an error message.
+
+  name: remove_flatpak
+  role: END
+  description:
+    Removes a Flatpak application from the system.
+    Call this only after the user has explicitly confirmed the removal.
+    appId: the Flatpak application ID (e.g. 'org.videolan.VLC').
+    Returns removal output or an error message.
+
+  name: install_native_package
+  role: END
+  description:
+    Installs a package using the native system package manager (dnf/apt/pacman/zypper).
+    Use only when the package is not available as a Flatpak or is a system-level package.
+    Call this only after the user has explicitly confirmed the installation.
+    Requires sudo/root privileges — a password popup will appear if needed.
+    packageName: the native package name (e.g. 'vlc', 'cups').
+    Returns installation output or an error message.
+
+  name: remove_native_package
+  role: END
+  description:
+    Removes a package using the native system package manager (dnf/apt/pacman/zypper).
+    Call this only after the user has explicitly confirmed the removal.
+    Requires sudo/root privileges — a password popup will appear if needed.
+    packageName: the native package name.
+    Returns removal output or an error message.
+
+------------------------------------------------------------------------
+
+[PackageUpdateTools]
+
+  name: check_flatpak_updates
+  role: NEUTRAL
+  description:
+    Checks for available updates for all installed Flatpak applications.
+    Safe to call without confirmation — read-only check.
+    Returns a list of apps with pending updates and their new versions.
+
+  name: check_native_updates
+  role: NEUTRAL
+  description:
+    Checks for available updates via the native system package manager (dnf/apt/pacman/zypper).
+    Safe to call without confirmation — read-only check.
+    Returns a list of packages with pending updates.
+
+  name: update_flatpak
+  role: END
+  description:
+    Updates a specific Flatpak application to the latest version.
+    Call this only after the user has explicitly confirmed the update.
+    Pass 'ALL' as appId to update all installed Flatpak apps.
+    appId: the Flatpak application ID, or 'ALL'.
+
+  name: update_native_package
+  role: END
+  description:
+    Updates a specific native package, or performs a full system upgrade.
+    Call this only after the user has explicitly confirmed the update.
+    Requires sudo/root privileges.
+    Pass 'ALL' as packageName to upgrade all native packages.
+    packageName: the native package name, or 'ALL'.
+
+------------------------------------------------------------------------
+
+[ServiceManagementTools]
+
+  name: search_services
+  role: START
+  description:
+    Searches for systemd service units whose name contains the given query (case-insensitive).
+    Use this before start_service or stop_service when the exact unit name is uncertain.
+    For example, if the user says "start ssh", call search_services("ssh") first to confirm
+    the real unit name (e.g. "sshd.service") before acting.
+    query: partial or full service name to search for (e.g. "ssh", "nginx", "mysql").
+    Returns a list of matching unit files and their enabled/disabled state.
+
+  name: service_status
+  role: NEUTRAL
+  description:
+    Returns the current status of a systemd service (active, inactive, failed, not-found, etc.).
+    Use search_services first if you are not sure of the exact unit name.
+    serviceName: the exact systemd unit name, e.g. "sshd", "nginx", "bluetooth".
+    You may omit the ".service" suffix — systemctl resolves it automatically.
+
+  name: start_service
+  role: END
+  description:
+    Starts a systemd service.
+    Use search_services first if you are not sure of the exact unit name.
+    Call this only after the user has explicitly confirmed they want to start the service.
+    Requires root privileges — a password popup will appear if needed.
+    serviceName: the exact systemd unit name, e.g. "sshd", "nginx", "bluetooth".
+    Returns a success message or an error if the service fails to start.
+
+  name: stop_service
+  role: END
+  description:
+    Stops a running systemd service.
+    Use search_services first if you are not sure of the exact unit name.
+    Call this only after the user has explicitly confirmed they want to stop the service.
+    Requires root privileges — a password popup will appear if needed.
+    serviceName: the exact systemd unit name, e.g. "sshd", "nginx", "bluetooth".
+    Returns a success message or an error if the service fails to stop.
+
+------------------------------------------------------------------------
+
+[ProcessTools]
+
+  name: list_running_processes
+  role: START
+  description:
+    Lists currently running processes on the system, showing PID, name, CPU%, memory%,
+    RSS (resident memory), and the owning user.
+    Use this when the user asks things like "what's running", "show processes",
+    "what's using my CPU", "what's eating memory", "top processes", etc.
+    sortBy: "cpu" to sort by CPU usage (default), "mem" to sort by memory usage.
+    Returns the top 20 processes in descending order.
+
+------------------------------------------------------------------------
+
+[FileTools]
+
+  name: search_files
+  role: START
+  description:
+    Searches for files or directories recursively in the user's home directory (~/).
+    Use this when the user asks things like "find my resume", "where are my PDFs",
+    "search for files named config", "find all mp3 files", etc.
+    namePattern: partial or full filename to match (case-insensitive).
+                 Supports wildcards: "report*" matches anything starting with "report".
+                 Leave blank to match any name (combine with extension to list by type).
+    extension:   file extension without the dot (e.g. "pdf", "txt", "mp3").
+                 Leave blank to include all extensions.
+    type:        "file" to return files only, "dir" to return directories only,
+                 leave blank for both.
+    Returns up to 50 matching paths relative to the home directory.
+    Requires at least one of namePattern or extension.
+
+  name: open_file
+  role: END
+  description:
+    Opens a file using a specified application.
+    Use this when the user asks to open, launch, view, or edit a file with a specific app.
+    Examples: "open my resume with LibreOffice", "view report.pdf in evince",
+    "edit config.txt in gedit", "open the photo in gimp".
+    filePath:        absolute or home-relative path to the file (e.g. ~/docs/resume.pdf).
+    applicationPath: command or full path of the application
+                     (e.g. "libreoffice", "evince", "gedit", "gimp", "firefox").
+    The application is launched in the background — the tool returns immediately.
+
+------------------------------------------------------------------------
+
+Total: 20 tools across 7 classes
