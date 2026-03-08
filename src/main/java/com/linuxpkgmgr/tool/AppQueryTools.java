@@ -162,6 +162,52 @@ public class AppQueryTools implements ToolBean {
         return sb.toString();
     }
 
+    private static final int SYS_MAX_RESULTS = 30;
+
+    @PkgTool(name = "search_installed_system_software", role = IntentRole.START, description = """
+            Searches installed non-GUI system software by name pattern — runtimes, servers,
+            CLI tools, libraries, and development environments that have no app-menu entry.
+            Use this when the user asks things like:
+              "what Java or JVM versions are installed", "find Python installs",
+              "is PostgreSQL / MySQL / MariaDB installed", "what Node.js version do I have",
+              "find gcc or clang compilers", "is nginx or apache installed",
+              "what Ruby / Perl / Go / Rust runtimes are on this system",
+              "list all installed dev tools", "what databases are installed".
+            Do NOT use this for GUI applications — use list_installed_apps for those.
+            namePattern: partial package name to match (e.g. "java", "python3", "postgres", "node").
+            Returns matching package names and their installed versions.
+            """)
+    public String searchInstalledSystemSoftware(String namePattern) {
+        log.debug("search_installed_system_software — pattern: '{}'", namePattern);
+
+        if (namePattern == null || namePattern.isBlank())
+            return "Please provide a name pattern to search for (e.g. \"java\", \"python\", \"postgres\").";
+
+        String lower = namePattern.trim().toLowerCase();
+        List<PackageInfo> matches = packageService.listInstalled().stream()
+                .filter(p -> p.source() == PackageInfo.Source.NATIVE)
+                .filter(p -> p.name().toLowerCase().contains(lower)
+                          || p.id().toLowerCase().contains(lower))
+                .limit(SYS_MAX_RESULTS)
+                .toList();
+
+        if (matches.isEmpty())
+            return "No installed system software found matching \"" + namePattern + "\".";
+
+        boolean capped = matches.size() == SYS_MAX_RESULTS;
+        StringBuilder sb = new StringBuilder();
+        sb.append("Installed system software matching \"").append(namePattern).append("\"")
+          .append(capped ? " (first " + SYS_MAX_RESULTS + "):" : " (" + matches.size() + " found):")
+          .append("\n\n");
+        for (PackageInfo p : matches) {
+            String ver = p.version().isBlank() ? "-" : p.version();
+            sb.append("  %-45s  %s\n".formatted(p.name(), ver));
+            if (!p.summary().isBlank())
+                sb.append("    ").append(p.summary()).append("\n");
+        }
+        return sb.toString();
+    }
+
     // -------------------------------------------------------------------------
 
     /**
