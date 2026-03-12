@@ -34,6 +34,7 @@ pkg-mgr:
   cloud:
     base-url: http://localhost:11435   # override with your remote Ollama URL
     model: gpt-oss:120b-cloud                 # larger tool-calling capable model
+    #model: llama3.2:latest
     temperature: 0.2
     num-ctx: 32768
 

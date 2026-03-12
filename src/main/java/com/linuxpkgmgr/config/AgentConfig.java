@@ -1,20 +1,20 @@
 package com.linuxpkgmgr.config;
 
-import com.linuxpkgmgr.service.SystemInfoService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.ollama.OllamaChatModel;
-import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
-import org.springframework.ai.ollama.api.OllamaEmbeddingOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import com.linuxpkgmgr.metrics.TokenUsageAdvisor;
+import com.linuxpkgmgr.metrics.TokenUsageAdvisor;
+import com.linuxpkgmgr.service.SystemInfoService;
 
 @Configuration
 public class AgentConfig {
@@ -85,8 +85,9 @@ public class AgentConfig {
 
     @Bean("localChatClient")
     public ChatClient localChatClient(ChatMemory chatMemory, SystemInfoService systemInfoService,
-                                      PayloadInterceptorAdvisor payloadInterceptor) {
-        return buildChatClient(localModel(), chatMemory, systemInfoService, payloadInterceptor);
+                                      PayloadInterceptorAdvisor payloadInterceptor,
+                                      TokenUsageAdvisor tokenUsageAdvisor) {
+        return buildChatClient(localModel(), chatMemory, systemInfoService, payloadInterceptor, tokenUsageAdvisor);
     }
 
     /**
@@ -115,8 +116,9 @@ public class AgentConfig {
      */
     @Bean("cloudChatClient")
     public ChatClient cloudChatClient(ChatMemory chatMemory, SystemInfoService systemInfoService,
-                                      PayloadInterceptorAdvisor payloadInterceptor) {
-        return buildChatClient(cloudModel(), chatMemory, systemInfoService, payloadInterceptor);
+                                      PayloadInterceptorAdvisor payloadInterceptor,
+                                      TokenUsageAdvisor tokenUsageAdvisor) {
+        return buildChatClient(cloudModel(), chatMemory, systemInfoService, payloadInterceptor, tokenUsageAdvisor);
     }
 
     private OllamaChatModel localModel() {
@@ -144,7 +146,8 @@ public class AgentConfig {
     private ChatClient buildChatClient(OllamaChatModel model,
                                        ChatMemory chatMemory,
                                        SystemInfoService systemInfoService,
-                                       PayloadInterceptorAdvisor payloadInterceptor) {
+                                       PayloadInterceptorAdvisor payloadInterceptor,
+                                       TokenUsageAdvisor tokenUsageAdvisor) {
 
         String systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace(
                 "${system_details}", systemInfoService.getSystemDetails());
@@ -153,7 +156,8 @@ public class AgentConfig {
                 .defaultSystem(systemPrompt)
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor.builder(chatMemory).build(),
-                        payloadInterceptor)
+                        payloadInterceptor,
+                        tokenUsageAdvisor)
                 .build();
     }
 }

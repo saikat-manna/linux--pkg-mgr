@@ -16,6 +16,9 @@
                    -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 8 16; }
 .send-button:hover { -fx-background-color: #b4befe; }
 
+.token-panel     { -fx-background-color: #181825; -fx-padding: 4 16; }
+.token-stats     { -fx-text-fill: #a6e3a1; -fx-font-size: 12px; }
+
 .shell-header    { -fx-background-color: #11111b; -fx-padding: 4 12; -fx-cursor: hand; -fx-border-color: #313244; -fx-border-width: 1 0 0 0; }
 .shell-header:hover { -fx-background-color: #1e1e2e; }
 .shell-toggle    { -fx-text-fill: #6c7086; -fx-font-size: 11px; }
